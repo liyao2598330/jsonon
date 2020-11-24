@@ -2,6 +2,7 @@ node_modules
 start.sh
 npm-debug.log
 .sass-cache
+.idea
 # VIM
 *~
 *.swp
