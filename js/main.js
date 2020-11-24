@@ -1,7 +1,6 @@
 'use strict';
 
 (function () {
-  var ApiUrl = 'https://api.awesomes.cn'
   Vue.component('vue-item', {
     props: ['jsondata', 'theme'],
     template: '#item-template'
@@ -24,7 +23,7 @@
 
   Vue.use({
     install: function (Vue, options) {
-      
+
       // 判断数据类型
       Vue.prototype.getTyp = function (val) {
         return toString.call(val).split(']')[0].split(' ')[1]
@@ -63,13 +62,13 @@
       }
 
       // 格式化值
-      Vue.prototype.formatVal = function (val) { 
+      Vue.prototype.formatVal = function (val) {
         switch(Vue.prototype.getTyp(val)) {
           case 'String':
             return '"' + val + '"'
             break
 
-          case 'Null': 
+          case 'Null':
             return 'null'
             break
 
@@ -85,20 +84,12 @@
       }
 
       // 计算对象的长度
-      Vue.prototype.objLength = function (obj) { 
+      Vue.prototype.objLength = function (obj) {
         return Object.keys(obj).length
       }
     }
   })
 
-  var initJson =  '{\n\
-      "name": "Json on",\n\
-      "description": "一个简洁的在线 JSON 查看器",\n\
-      "open source": {\n\
-        "是否开源": true,\n\
-        "GitHub": "https://github.com/bimohxh/jsonon"\n\
-      }\n\
-  }'
 
   // 主题 [key, String, Number, Boolean, Null, link-link, link-hover]
   let themes = [
@@ -112,9 +103,9 @@
     data: {
       baseview: 'formater',
       view: 'code',
-      jsoncon: initJson,
+      jsoncon: undefined,
       newjsoncon: '{"name": "Json on"}',
-      jsonhtml: JSON.parse(initJson),
+      jsonhtml: undefined,
       compressStr: '',
       error: {},
       historys: [],
@@ -126,7 +117,6 @@
       },
       themes: themes,
       checkedTheme: 0,
-      shareKey: '', // 分享后返回的ID
       isSharing: false
     },
     methods: {
@@ -152,46 +142,6 @@
         App.jsoncon = Parse.compress(App.jsoncon)
       },
 
-      // diff
-      diffTwo: function () {
-        var oldJSON = {}
-        var newJSON = {}
-        App.view = 'code'
-        try {
-          oldJSON = jsonlint.parse(App.jsoncon)
-        } catch (ex) {
-          App.view = 'error'
-          App.error = {
-            msg: '原 JSON 解析错误\r\n' + ex.message
-          }
-          return
-        }
-
-        try {
-          newJSON = jsonlint.parse(App.newjsoncon)
-        } catch (ex) {
-          App.view = 'error'
-          App.error = {
-            msg: '新 JSON 解析错误\r\n' + ex.message
-          }
-          return
-        }
-
-        var base = difflib.stringAsLines(JSON.stringify(oldJSON, '', 4))
-        var newtxt = difflib.stringAsLines(JSON.stringify(newJSON, '', 4))
-        var sm = new difflib.SequenceMatcher(base, newtxt)
-        var opcodes = sm.get_opcodes()
-        $('#diffoutput').empty().append(diffview.buildView({
-          baseTextLines: base,
-          newTextLines: newtxt,
-          opcodes: opcodes,
-          baseTextName: '原 JSON',
-          newTextName: '新 JSON',
-          contextSize: 2,
-          viewType: 0
-        }))
-      },
-
       // 清空
       clearAll: function () {
         App.jsoncon = ''
@@ -199,26 +149,44 @@
 
       // 美化
       beauty: function () {
-        App.jsoncon = JSON.stringify(JSON.parse(App.jsoncon), '', 4)
+        let data = "";
+        try{
+          data = JSON.stringify(JSON5.parse(App.jsoncon), undefined, 4)
+        }catch (json_error) {
+          try{
+            data = JSON.stringify(eval("("+App.jsoncon+")"),undefined, 4)
+          }catch (eval_error) {
+            throw json_error
+          }
+        }
+        App.jsoncon = data
       },
-
-      baseViewToDiff: function () {
-        App.baseview = 'diff'
-        App.diffTwo()
+      fix_json(){
+        let data = this.jsoncon;
+        if(data){
+          // 替换单双引号包裹的情况 eg. '{"key": "value"}'
+          data=data.replace(/^'{|^"{/i,"{").replace(/}'$|}"$/i,"}");
+          // 如果所有引号都为单引号，则统一替换为双引号
+          if(data.indexOf('"')===-1&&data.indexOf("'")!==-1){
+            let len = data.match(/'/g);
+            len = len ? len.length : 0;
+            console.log(len)
+            if(len>=2){
+              data = data.replaceAll("'", '"');
+            }
+          }
+          // 替换所有引号被转义的情况 eg. {\"key\": \"value\"}
+          if(data.indexOf("\\'")&&data.indexOf('\\"')===-1){
+            data = data.replaceAll("\\'", '"');
+          }else if(data.indexOf('\\"')&&data.indexOf("\\'")===-1){
+            data = data.replaceAll('\\"', '"')
+          }
+        }
+        this.jsoncon = data
       },
-
-      // 回到格式化视图
-      baseViewToFormater: function () {
-        App.baseview = 'formater'
-        App.view = 'code'
-        App.showJsonView()
-      },
-
       // 根据json内容变化格式化视图
       showJsonView: function () {
-        if (App.baseview === 'diff') {
-          return
-        }
+        this.fix_json();
         try {
           if (this.jsoncon.trim() === '') {
             App.view = 'empty'
@@ -253,6 +221,10 @@
         })
       },
 
+      auto_save(){
+        localforage.setItem('auto_save', App.jsoncon)
+      },
+
       // 删除已保存的
       remove: function (item, index) {
         localforage.removeItem(item.key, function () {
@@ -270,8 +242,8 @@
       // 获取所有保存的json
       listHistory: function () {
         localforage.iterate(function (value, key, iterationNumber) {
-          if (key[0] !== '#') {
-            value.key = key
+          if (key[0] !== '#'&&key !== 'auto_save') {
+            value.key = key;
             App.historys.push(value)
           }
           if (key === '#theme') {
@@ -281,11 +253,6 @@
         })
       },
 
-      // 导出文本
-      exportTxt: function () {
-        saveTextAs(App.jsoncon, App.exTxt.name + '.txt')
-        App.isExportTxtShow = false
-      },
 
       // 切换主题
       switchTheme: function (index) {
@@ -293,37 +260,11 @@
         localforage.setItem('#theme', index)
       },
 
-      // 获取分享的链接
-      shareUrl: function (key) {
-        return `${window.location.origin}?key=${key}`
-      },
-
-      // 分享
-      share: function () {
-        let con = App.jsoncon
-        if (con.trim() === '') {
-          return
-        }
-        App.isSharing = true
-        $.ajax({
-          type: 'POST',
-          url: `${ApiUrl}/json`,
-          contentType: 'application/json; charset=utf-8',
-          data: JSON.stringify({con: con, key: App.shareKey}),
-          success: (data) => {
-            App.isSharing = false
-            App.shareKey = uuidv1()
-            if (data.status) {
-              Helper.alert('分享成功，已将链接复制到剪贴板，只能保存24小时', 'success')
-            } else {
-            }
-          }
-        })
-      }
     },
     watch: {
       jsoncon: function () {
         App.showJsonView()
+        App.auto_save()
       }
     },
     computed: {
@@ -341,16 +282,12 @@
     created () {
       this.listHistory()
       var clipboard = new Clipboard('.copy-btn')
-      let sps = window.location.href.split('?key=')
-      let jsonID = sps[sps.length - 1]
-      this.shareKey = uuidv1()
-      if (sps.length > 1 && jsonID.length > 5) {
-        $.get(`${ApiUrl}/json?key=${jsonID}`, function (data) {
-          if (data.status) {
-            App.jsoncon = data.item.con
-          }
-        })
-      }
+    },
+    mounted: function () {
+      localforage.getItem('auto_save', function (err, value) {
+        App.jsoncon = value
+      })
     }
+
   })
 })()

@@ -6,36 +6,24 @@
     <meta name="keywords" content="json,json在线解析,json格式化,json格式验证,json数组"/>
     <meta name="description" content="一款简洁优雅的在线json解析器，可能是目前最好用的json在线查看工具"/>
     <link href="css/hint.min.css" rel="stylesheet">
-    <!-- <link href="css/diffview.css" rel="stylesheet"> -->
     <link href="css/loading.css" rel="stylesheet">
     <link href="css/main.css" rel="stylesheet">
   </head>
 
   <body>
-    <div id="app">
-      <div class="side-top"> 
+    <div id="app" v-cloak>
+      <div class="side-top">
         <a class="logo"   href="/">
-          <span class="on">Json</span><span >on</span>
-        </a>  
+          <span class="on">JSON格式化</span>
+        </a>
         <span class="slogan">
-          「也许」是最好用的JSON格式化验证工具
+          这不是一个商业网站，仅供个人使用
         </span>
-
-        <div class="top-right">
-          <a href="https://github.com/bimohxh/jsonon" target="_blank">
-          已开源在 GitHub 上
-          </a>
-        </div>
       </div>
-      
+
       <div :class="'side-left side-view-' + baseview">
         <div class="left-panel">
-          <textarea  v-model="jsoncon"></textarea>  
-          <div class="label" v-show="baseview == 'diff'">原 JSON</div>       
-        </div>
-        <div  class="left-panel"  v-show="baseview == 'diff'">
-          <textarea  v-model="newjsoncon"></textarea>  
-          <div class="label">新 JSON</div>       
+          <textarea  v-model="jsoncon" @dblclick="beauty"></textarea>
         </div>
       </div>
 
@@ -63,12 +51,6 @@
                 </svg>
               </a>
 
-              <a href="javascript:void(0)" class="hint--top"  data-hint="导出文本文件"   @click="isExportTxtShow = true">
-                <svg class="icon">
-                  <use xlink:href="svg/icon.svg#export-txt"></use>
-                </svg>
-              </a>
-
               <a href="javascript:void(0)" class="hint--top"  data-hint="全部展开"  @click="expandAll()">
                 <svg class="icon" >
                   <use xlink:href="svg/icon.svg#expand"></use>
@@ -80,7 +62,7 @@
                   <use xlink:href="svg/icon.svg#collapse"></use>
                 </svg>
               </a>
-            </div>  
+            </div>
             <div class="pull-right">
               <div class="loader" v-show="isSharing">
                 <div class="ball-pulse-sync">
@@ -90,13 +72,7 @@
                 </div>
               </div>
 
-              <a class="hint--top save-tool copy-btn"  data-hint="分享" href="javascript:void(0)" @click="share" data-clipboard-target="#share-input" v-show="!isSharing">
-                <svg class="icon">
-                  <use xlink:href="svg/icon.svg#share"></use>
-                </svg>
-              </a>
-
-              <span class="pop-btn"  v-show="historys.length > 0">
+              <span class="pop-btn" v-show="historys.length > 0">
                 <a class="hint--top"  data-hint="历史保存" href="javascript:void(0)">
                   <svg class="icon">
                     <use xlink:href="svg/icon.svg#record"></use>
@@ -111,7 +87,7 @@
                     </svg>
                   </li>
                 </ul>
-              </span>    
+              </span>
               <a class="hint--top save-tool"  data-hint="保存" href="javascript:void(0)" @click="isSaveShow = true">
               <svg class="icon">
                 <use xlink:href="svg/icon.svg#save"></use>
@@ -130,11 +106,6 @@
                   </div>
                 </div>
               </span>
-            </div> 
-
-            <!-- 用作复制的隐藏文本域 -->
-            <div style="position: absolute; top: -100000px">
-              <input id="share-input" :value="shareUrl(shareKey)">
             </div>
           </div>
 
@@ -149,11 +120,11 @@
 
             <!--空视图-->
             <div class="view-code"  v-show="view == 'empty'">
-            </div> 
+            </div>
 
             <!--压缩视图-->
             <textarea v-show="view == 'compress'">{{compressStr}}</textarea>
-            
+
           </div>
 
 
@@ -162,11 +133,6 @@
             <pre v-cloak>{{error.msg}}</pre>
           </div>
 
-          <!--diff视图-->
-          <!-- <div id="diffoutput" v-show="baseview == 'diff' && view != 'error'">
-
-          </div> -->
-          
         </div>
       </div>
 
@@ -180,25 +146,13 @@
         <button   @click="save()" >保存</button>
       </div>
 
-      <!--弹出下载文本框-->
-      <div class="save-box" v-show="isExportTxtShow">
-        <svg class="icon close-icon" @click="isExportTxtShow = false">
-          <use xlink:href="svg/icon.svg#close"></use>
-        </svg>
-
-        <label>.txt</label>
-
-        <input type="text" placeholder="请输入辨识名称" v-model="exTxt.name" />
-        <button @click="exportTxt()">下载</button>
-      </div>
-      
-    </div>    
+    </div>
 
     <!--用于移动的时候遮住文本域 避免被选中-->
     <div class="widnow-cover">
-    </div> 
+    </div>
 
-    
+
 
     <!--最外层根结构-->
     <script type="text/x-template" id="outer-template">
@@ -240,7 +194,7 @@
             <span>{</span>
             <vue-item :jsondata="val" :theme="theme"></vue-item>
             <div class="brace-end">}<span v-if="!isend">,</span></div>
-          </span>  
+          </span>
 
           <span class="fold-view">{{getTyp(val)}}{<label class="ex-alia" @click="expand($event)">{{objLength(val)}}</label>}<span v-if="!isend">,</span></span>
         </template>
@@ -252,16 +206,16 @@
             <span>[</span>
             <span class="val">
               <vue-outer :jsondata="sub" v-for="(sub, index) in val" :isend="index == val.length - 1" :theme="theme"></vue-outer>
-            </span> 
+            </span>
             <div class="brace-end">]<span v-if="!isend">,</span></div>
-          </span>  
+          </span>
 
           <span class="fold-view">{{getTyp(val)}}[<label class="arrlen ex-alia" @click="expand($event)">{{val.length}}</label>]<span v-if="!isend">,</span></span>
 
         </template>
       </div>
     </script>
-    
+
     <!--展开 折叠的 UI 组件-->
     <script type="text/x-template" id="expand-template">
       <span class="expand-wraper">
@@ -275,32 +229,21 @@
       </span>
     </script>
 
-    
+
 
 
     <script src="js/vue.min.js"></script>
     <script src="js/jquery.js"></script>
     <script src="js/jsonlint.js"></script>
+    <script src="js/JSON5.js"></script>
+
     <script src="js/parse.js"></script>
     <script src="js/editor.js"></script>
-    <!-- <script src="js/diffview.js"></script> -->
     <script src="js/localforage.min.js"></script>
-    <script src="js/FileSaver.js"></script>
     <script src="js/uuid.js"></script>
     <script src="js/clipboard.min.js"></script>
     <script src="js/helper.js"></script>
     <script src="js/main.js"></script>
-    
-    <!--访问统计  请换成自己的-->
-    <script>
-      var _hmt = _hmt || [];
-      (function() {
-        var hm = document.createElement("script");
-        hm.src = "https://hm.baidu.com/hm.js?0d088ec0e724b355417b09862c236ea8";
-        var s = document.getElementsByTagName("script")[0]; 
-        s.parentNode.insertBefore(hm, s);
-      })();
-    </script>
 
   </body>
 </html>
